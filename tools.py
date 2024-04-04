@@ -5,20 +5,20 @@ def merge_m4s_to_mp4(input_files, output_file, GPU, save_path=r'D:'):
     command = ['ffmpeg']
     for input_file in input_files:
         command.extend(['-i', input_file])
-    command.extend(['-codec', 'copy', f'{save_path}/{output_file}'])
+    command.extend(['-codec', 'copy', f'temp{output_file}'])
     subprocess.run(command)
-    # # 构造 ffmpeg 命令,尝试转码
-    # print('开始转码')
-    # if GPU == True:
-    #     command = ['ffmpeg', '-hwaccel_output_format', 'cuda', '-i', f'temp{output_file}', '-c:v', 'h264_nvenc', '-c:a', 'aac',
-    #                f'{save_path}/{output_file}']
-    # else:
-    #     command = ['ffmpeg', '-i', f'temp{output_file}', '-c:v', 'libx264', '-c:a', 'aac', f'{save_path}/{output_file}']
-    # # 执行命令
-    # subprocess.run(command)
-    # for input_file in input_files:
-    #     os.remove(input_file)
-    # os.remove(f'temp{output_file}')
+    # 构造 ffmpeg 命令,尝试转码
+    print('开始转码')
+    if GPU == True:
+        command = ['ffmpeg', '-hwaccel_output_format', 'cuda', '-i', f'temp{output_file}', '-c:v', 'h264_nvenc', '-c:a', 'aac',
+                   f'{save_path}/{output_file}']
+    else:
+        command = ['ffmpeg', '-i', f'temp{output_file}', '-c:v', 'libx264', '-c:a', 'aac', f'{save_path}/{output_file}']
+    # 执行命令
+    subprocess.run(command)
+    for input_file in input_files:
+        os.remove(input_file)
+    os.remove(f'temp{output_file}')
 
 def find_files(source_folder, target_file):
     """
