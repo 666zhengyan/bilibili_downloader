@@ -84,12 +84,17 @@ async def download(obj_video,wrong_list):
     for j in obj_video.little_audio_list:
         tasks.append(asyncio.create_task(video.dowmload(j,session,mybar,wronglist=wrong_list)))
 
-    result=await asyncio.gather(*tasks)
+    #限制并发量
+    max_concurrent_tasks = 10
+    for i in range(0, len(tasks), max_concurrent_tasks):
+        batch = tasks[i:i + max_concurrent_tasks]
+        await asyncio.gather(*batch)
     await session.close()
 
 
 def run(obj_video,wrong_list):
     asyncio.get_event_loop().run_until_complete(download(obj_video,wrong_list))
+
     print('下载失败的数量：',len(wrong_list))
 
    #对于下载失败的情况还需要改进，流式下载
@@ -112,7 +117,8 @@ def run(obj_video,wrong_list):
                     headers = i.headers
                     headers['Range'] = f'bytes={i.start_range}-{i.right}'
                     response = requests.get(url=i.url, headers=headers)
-                    if response.status_code!=206 or (response.headers['Content-Length']!=1024000 and i.start_range<i.right):
+                    #小修了这里
+                    if response.status_code!=206 or (int(response.headers['Content-Length'])!=1024000 and i.start_range<i.right):
                         raise Exception
                     with open(f'{i.name}', 'wb') as f:
                         f.write(response.content)
@@ -143,16 +149,19 @@ def execute(obj_get_VIP_video):
             #每个进程都将维护一个下载失败列表
             wrong_list=[]
             f.submit(run,i,wrong_list)
-    #tools.remove_files(r'D:\pythonProject\bilibili','.m4s')
 
 
 if __name__=="__main__":
     climb = get_VIP_video(urllist=[
-       'https://www.bilibili.com/bangumi/play/ep4141?spm_id_from=333.337.0.0',
-        'https://www.bilibili.com/bangumi/play/ep4140?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0',
-        'https://www.bilibili.com/bangumi/play/ep4139?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0'
+       #'https://www.bilibili.com/bangumi/play/ep80041?spm_id_from=333.337.0.0',
+        'https://www.bilibili.com/bangumi/play/ep754145?spm_id_from=333.337.top_right_bar_window_history.content.click&from_spmid=666.25.episode.0'
     ],
         GPU=True, save_path=r'D:\保存下载的视频',broswerType='msedge')
     climb.run()
     execute(climb)
     tools.remove_files(os.path.dirname(os.path.abspath(__file__)), '.m4s')
+
+"""
+并发量的设置导致了问题
+有些视频需要转码，有些不需要
+"""
