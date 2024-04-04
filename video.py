@@ -94,19 +94,20 @@ def get_length(url,headers):
 async def dowmload(OBJ_little_video,session,bar,wronglist):
     headers=OBJ_little_video.headers
     headers['Range']=f'bytes={OBJ_little_video.start_range}-{OBJ_little_video.right}'
-    async with asyncio.Semaphore(10):
-        try:
-            async with session.get(url=OBJ_little_video.url, headers=headers) as r:
-                response = await r.read()
-                #print(r.status)
-                if r.status!=206:
-                    raise Exception('响应码不是206')
-        except Exception as e:
-            print(str(e))
-            wronglist.append(OBJ_little_video)
-        else:
-            async with aiofiles.open(f'{OBJ_little_video.name}', 'ab') as f:
-                await f.write(response)
-            OBJ_little_video.have_done = True
-            bar.update()
+    try:
+        async with session.get(url=OBJ_little_video.url, headers=headers) as r:
+            response = await r.read()
+            if r.status != 206:
+                raise Exception('响应码不是206')
+            if int(r.headers['Content-Length']) < 1024000 and OBJ_little_video.start_range < OBJ_little_video.right:
+                raise Exception('响应的数据不正确')
+    except Exception as e:
+        print(str(e))
+        wronglist.append(OBJ_little_video)
+    else:
+        async with aiofiles.open(f'{OBJ_little_video.name}', 'ab') as f:
+            await f.write(response)
+        OBJ_little_video.have_done = True
+        bar.update()
+
 
