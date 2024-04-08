@@ -5,7 +5,9 @@ import tools
 import multiprocessing
 import os
 import tkinter.messagebox as messagebox
-def start_download(save_location, chosen_browser, urls_to_download, enable_gpu_transcoding):
+from queue import Empty
+def start_download(save_location, chosen_browser, urls_to_download, enable_gpu_transcoding,queue):
+    #子进程里面不能涉及GUI操作
 
     if not urls_to_download:
         print("没有输入URL.")
@@ -24,19 +26,19 @@ def start_download(save_location, chosen_browser, urls_to_download, enable_gpu_t
         climb.run()
         get_vip_video.execute(climb)
         tools.remove_files(os.path.dirname(os.path.abspath(__file__)), '.m4s')
-        messagebox.showinfo("下载完成", "文件已经下载完成！")
+        queue.put('OK')
     except Exception as e:
-        messagebox.showerror("发生错误", f"下载过程中出现问题: {e}")
+        queue.put('NOT OK')
 
 def start_download_thread():
     save_location = save_location_entry.get()
     chosen_browser = selected_browser.get()
     urls_to_download = [url_entry.get() for url_entry in url_entries if url_entry.get()]
     enable_gpu_transcoding = selected_gpu_transcoding.get()
-
-    download_process = multiprocessing.Process(target=start_download, args=(save_location, chosen_browser, urls_to_download, enable_gpu_transcoding))
-
+    queue=multiprocessing.Queue()
+    download_process = multiprocessing.Process(target=start_download, args=(save_location, chosen_browser, urls_to_download, enable_gpu_transcoding,queue))
     download_process.start()
+    check_queue(queue)
 
 def browse_save_location():
     folder_selected = filedialog.askdirectory()
@@ -99,6 +101,20 @@ for i in range(5):
 # 开始下载按钮
 start_button = tk.Button(root, text='Start Download', command=start_download_thread)
 start_button.pack(pady=10)
+def check_queue(queue):
+    try:
+        message = queue.get_nowait()  # Try to get message without blocking
+    except Empty:
+        # If the queue is empty, re-schedule the check_queue function after 100ms
+        root.after(100, check_queue, queue)
+    else:
+        # If a message was received, process it
+        if message == 'OK':
+            messagebox.showinfo('Notice', 'Download complete!')
+        else:
+            messagebox.showinfo('Error', 'Download Failed!')
+
+
 
 if __name__ == "__main__":
     root.mainloop()
